@@ -6,7 +6,7 @@ A playground for mini tfchain-related experiments.
 
 ### MultiSigScanner
 
-An experiment to test how feasable it is to scan a seed for all multisig wallets it is part of.
+An experiment to test how feasable it is to scan —using a public web explorer— a seed for all multisig wallets it is part of.
 
 #### Conclusion
 

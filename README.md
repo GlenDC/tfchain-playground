@@ -8,6 +8,10 @@ A playground for mini tfchain-related experiments.
 
 An experiment to test how feasable it is to scan —using a public web explorer— a seed for all multisig wallets it is part of.
 
+> NOTE: It is important to know that this experimental scanner does not assume the user knows the key range,
+> and instead scans as far as it has to go, with the assumption that the key range only expands
+> if a key is used in the last `1024` keys of the currently known range.
+
 #### Conclusion
 
 Seems reasonable in situations where the user doesn't mind to wait a bit, as tests show it takes up to 10 seconds

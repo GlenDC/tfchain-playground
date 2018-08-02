@@ -31,6 +31,9 @@ func main() {
 	seed, err := modules.InitialSeedFromMnemonic(mnemonic)
 	onError(err)
 
+	// usedUnlockHashes defines the unlock hashes which are used
+	var usedUnlockHashes []types.UnlockHash
+
 	// dedup multisig addresses
 	multisigaddresses := make(map[types.UnlockHash]struct{}, initialKeys)
 
@@ -76,13 +79,13 @@ func main() {
 				if mn == 0 {
 					log.Println("uh (" + strconv.FormatUint(pair.Index, 10) + ") " +
 						pair.UnlockHash.String() + " is not part of any multisig wallet")
-					ch <- scanResult{MultiSigAddresses: nil, UnlockHashFound: true}
+					ch <- scanResult{MultiSigAddresses: nil, UnlockHashFound: true, KeyIndex: pair.Index}
 					continue
 				}
 				log.Println("uh (" + strconv.FormatUint(pair.Index, 10) + ") " +
 					pair.UnlockHash.String() + " is part of " + strconv.Itoa(mn) + " multisig wallets: {" +
 					unlockHashSliceAsString(explorerHashGet.MultiSigAddresses) + "}")
-				ch <- scanResult{MultiSigAddresses: explorerHashGet.MultiSigAddresses, UnlockHashFound: true}
+				ch <- scanResult{MultiSigAddresses: explorerHashGet.MultiSigAddresses, UnlockHashFound: true, KeyIndex: pair.Index}
 			}
 			ch <- scanResult{ChannelCloseIndex: chanIndex + 1}
 		}(uint64(cpu))
@@ -102,7 +105,10 @@ func main() {
 			for fki < ki {
 				result := <-ch
 				fki++
-				foundKeys = foundKeys || result.UnlockHashFound
+				if result.UnlockHashFound {
+					foundKeys = true
+					usedUnlockHashes = append(usedUnlockHashes, keys[result.KeyIndex].UnlockHash())
+				}
 				for _, uh := range result.MultiSigAddresses {
 					multisigaddresses[uh] = struct{}{}
 				}
@@ -134,7 +140,10 @@ func main() {
 			ki++
 		case result := <-ch:
 			fki++
-			foundKeys = foundKeys || result.UnlockHashFound
+			if result.UnlockHashFound {
+				foundKeys = true
+				usedUnlockHashes = append(usedUnlockHashes, keys[result.KeyIndex].UnlockHash())
+			}
 			// collecting incoming multisig addresses
 			for _, uh := range result.MultiSigAddresses {
 				multisigaddresses[uh] = struct{}{}
@@ -158,6 +167,9 @@ func main() {
 			}
 			continue
 		}
+		if result.UnlockHashFound {
+			usedUnlockHashes = append(usedUnlockHashes, keys[result.KeyIndex].UnlockHash())
+		}
 		for _, uh := range result.MultiSigAddresses {
 			multisigaddresses[uh] = struct{}{}
 		}
@@ -165,7 +177,9 @@ func main() {
 
 	// stop timer and report time
 	duration := time.Now().Sub(start)
-	fmt.Println("found " + strconv.Itoa(len(multisigaddresses)) + " multisig address(es)")
+	fmt.Println("used " + strconv.Itoa(len(usedUnlockHashes)) + " wallet address(es):")
+	fmt.Println(unlockHashSliceAsString(usedUnlockHashes))
+	fmt.Println("found " + strconv.Itoa(len(multisigaddresses)) + " multisig address(es):")
 	fmt.Println(unlockHashMapAsString(multisigaddresses))
 	fmt.Println("time it took to scan " + strconv.FormatUint(fki, 10) + " keys of given seed: " + duration.String())
 }
@@ -177,6 +191,7 @@ type unlockHashIndexPair struct {
 type scanResult struct {
 	MultiSigAddresses []types.UnlockHash
 	UnlockHashFound   bool
+	KeyIndex          uint64
 	ChannelCloseIndex uint64
 }
 type spendableKey struct {
@@ -189,6 +204,9 @@ func (sk spendableKey) UnlockHash() types.UnlockHash {
 }
 
 func unlockHashSliceAsString(uhs []types.UnlockHash) (s string) {
+	if len(uhs) == 0 {
+		return "none"
+	}
 	for _, uh := range uhs {
 		s += " " + uh.String()
 	}
@@ -196,6 +214,9 @@ func unlockHashSliceAsString(uhs []types.UnlockHash) (s string) {
 }
 
 func unlockHashMapAsString(uhs map[types.UnlockHash]struct{}) (s string) {
+	if len(uhs) == 0 {
+		return "none"
+	}
 	for uh := range uhs {
 		s += " " + uh.String()
 	}

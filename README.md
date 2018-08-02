@@ -15,7 +15,7 @@ for a wallet with about 3500 keys (scanning up to around 4000).
 
 #### How to run
 
-```
+```log
 $ go run ./cmd/multisigscanner/main.go > scan.log 2>&1
 Seed Mnemonic: 
 2018/08/02 19:39:11 scanning keys for multisig addresses using https://explorer.testnet.threefoldtoken.com...
